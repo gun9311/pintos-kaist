@@ -3,6 +3,9 @@
 #include "threads/malloc.h"
 #include "vm/vm.h"
 #include "vm/inspect.h"
+#include "lib/kernel/hash.h"
+#include "threads/vaddr.h"
+
 
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
@@ -63,20 +66,27 @@ err:
 /* Find VA from spt and return page. On error, return NULL. */
 struct page *
 spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
-	struct page *page = NULL;
+	struct page *page = (struct *)malloc(sizeof(struct page));
 	/* TODO: Fill this function. */
-
-	return page;
+	page = pg_round_down(va);
+	struct hash_elem *e = hash_find(&spt->page_table,&page->h_elem);
+	struct page *f_page = hash_entry(e, struct page, hash_elem);
+	free(page);
+	if (f_page)
+		return f_page;
+	else
+		return NULL
 }
 
 /* Insert PAGE into spt with validation. */
 bool
-spt_insert_page (struct supplemental_page_table *spt UNUSED,
-		struct page *page UNUSED) {
-	int succ = false;
+spt_insert_page (struct supplemental_page_table *spt UNUSED, struct page *page UNUSED) {
+	int succ = true;
 	/* TODO: Fill this function. */
-
-	return succ;
+	if(hash_insert(&spt->page_table,&page->h_elem))
+		return succ;
+	else
+		return false;
 }
 
 void
@@ -174,12 +184,14 @@ vm_do_claim_page (struct page *page) {
 /* Initialize new supplemental page table */
 void
 supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
+	hash_init(&spt->page_table,page_hash,page_less,NULL);
 }
 
 /* Copy supplemental page table from src to dst */
 bool
 supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
 		struct supplemental_page_table *src UNUSED) {
+	
 }
 
 /* Free the resource hold by the supplemental page table */

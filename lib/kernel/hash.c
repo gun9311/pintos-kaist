@@ -38,6 +38,30 @@ hash_init (struct hash *h,
 		return false;
 }
 
+
+/* Computes and returns the hash value for hash element E, given
+ * auxiliary data AUX. */
+typedef uint64_t page_hash (const struct hash_elem *e, void *aux){
+	struct page *page_entry = hash_entry(e,struct page,hash_elem);
+	return hash_int(&page_entry)
+}
+
+/* Compares the value of two hash elements A and B, given
+ * auxiliary data AUX.  Returns true if A is less than B, or
+ * false if A is greater than or equal to B. */
+typedef bool page_less (const struct hash_elem *a, const struct hash_elem *b, void *aux){
+	struct page *a = hash_entry(a, struct page, hash_elem);
+	struct page *b = hash_entry(b, struct page, hash_elem);
+	return &a->va > &b->va; 
+}
+
+/* Performs some operation on hash element E, given auxiliary
+ * data AUX. */
+typedef void hash_action_func (struct hash_elem *e, void *aux){
+
+}
+
+
 /* Removes all the elements from H.
 
    If DESTRUCTOR is non-null, then it is called for each element
