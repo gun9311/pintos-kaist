@@ -15,7 +15,17 @@
         "init.h": "c",
         "flags.h": "c",
         "filesys.h": "c",
-        "file.h": "c"
+        "file.h": "c",
+        "hash.h": "c",
+        "vm.h": "c",
+        "initializer_list": "c",
+        "limits": "c",
+        "type_traits": "c",
+        "array": "c",
+        "istream": "c",
+        "ostream": "c",
+        "tuple": "c",
+        "utility": "c"
     },
     "C_Cpp.errorSquiggles": "disabled"
 }

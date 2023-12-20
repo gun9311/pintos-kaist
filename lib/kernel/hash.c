@@ -8,6 +8,8 @@
 #include "hash.h"
 #include "../debug.h"
 #include "threads/malloc.h"
+#include "vm/vm.h"
+
 
 #define list_elem_to_hash_elem(LIST_ELEM)                       \
 	list_entry(LIST_ELEM, struct hash_elem, list_elem)
@@ -18,6 +20,29 @@ static struct hash_elem *find_elem (struct hash *, struct list *,
 static void insert_elem (struct hash *, struct list *, struct hash_elem *);
 static void remove_elem (struct hash *, struct hash_elem *);
 static void rehash (struct hash *);
+
+/* Computes and returns the hash value for hash element E, given
+ * auxiliary data AUX. */
+uint64_t page_hash (const struct hash_elem *e, void *aux){
+	struct page *p = hash_entry(e,struct page,h_elem); // 페이지 추출
+	return hash_bytes(&p->va, sizeof p->va);
+} // 해시 연산 함수
+
+
+/* Compares the value of two hash elements A and B, given
+ * auxiliary data AUX.  Returns true if A is less than B, or
+ * false if A is greater than or equal to B. */
+bool page_less (const struct hash_elem *a, const struct hash_elem *b, void *aux){
+	struct page *pa = hash_entry(a, struct page, h_elem);
+	struct page *pb = hash_entry(b, struct page, h_elem); // 페이지 시작 주소 추출
+	return pa->va > pb->va; 
+} // 페이지의 가상주소로 비교..?
+
+/* Performs some operation on hash element E, given auxiliary
+ * data AUX. */
+// void hash_action_func (struct hash_elem *e, void *aux){
+
+// }
 
 /* Initializes hash table H to compute hash values using HASH and
    compare hash elements using LESS, given auxiliary data AUX. */
@@ -37,30 +62,6 @@ hash_init (struct hash *h,
 	} else
 		return false;
 }
-
-
-/* Computes and returns the hash value for hash element E, given
- * auxiliary data AUX. */
-typedef uint64_t page_hash (const struct hash_elem *e, void *aux){
-	struct page *page_entry = hash_entry(e,struct page,hash_elem);
-	return hash_int(&page_entry)
-}
-
-/* Compares the value of two hash elements A and B, given
- * auxiliary data AUX.  Returns true if A is less than B, or
- * false if A is greater than or equal to B. */
-typedef bool page_less (const struct hash_elem *a, const struct hash_elem *b, void *aux){
-	struct page *a = hash_entry(a, struct page, hash_elem);
-	struct page *b = hash_entry(b, struct page, hash_elem);
-	return &a->va > &b->va; 
-}
-
-/* Performs some operation on hash element E, given auxiliary
- * data AUX. */
-typedef void hash_action_func (struct hash_elem *e, void *aux){
-
-}
-
 
 /* Removes all the elements from H.
 
