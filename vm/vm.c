@@ -6,6 +6,8 @@
 #include "lib/kernel/hash.h"
 #include "threads/vaddr.h"
 #include "threads/mmu.h"
+#include "userprog/process.h"
+#include "vm/uninit.h"
 
 static struct list frame_table;
 static struct list_elem *start;
@@ -22,6 +24,8 @@ vm_init (void) {
 	register_inspect_intr ();
 	/* DO NOT MODIFY UPPER LINES. */
 	/* TODO: Your code goes here. */
+	list_init(&frame_table); // 프레임 테이블 초기화
+	start = list_begin(&frame_table); // 시작 요소
 }
 
 /* Get the type of the page. This function is useful if you want to know the
@@ -56,12 +60,20 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 
 	/* Check wheter the upage is already occupied or not. */
 	if (spt_find_page (spt, upage) == NULL) {
-	
 		/* TODO: Create the page, fetch the initialier according to the VM type,
 		 * TODO: and then create "uninit" page struct by calling uninit_new. You
 		 * TODO: should modify the field after calling the uninit_new. */
+		struct page *p = (struct page *)malloc(sizeof(struct page));
+	 	if(!p) 
+			return false;
+		if(!uninit_initialize(p,upage)) {
+			
+		}
 
+
+		p->writable = writable; // 초기값..??
 		/* TODO: Insert the page into the spt. */
+		return spt_insert_page(spt->page_table,p);
 	}
 err:
 	return false;
@@ -135,6 +147,7 @@ vm_get_frame (void) {
         // PANIC("todo: handle page allocation failure");
 		frame = vm_evict_frame();
 		frame->page = NULL;
+		return frame;
     }
     frame->kva = kpage;
     frame->page = NULL; // 초기화
@@ -164,7 +177,10 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	/* TODO: Validate the fault */
 	/* TODO: Your code goes here */
 
-	return vm_do_claim_page (page);
+	if (is_kernel_vaddr(addr))
+		return false;
+	if (page && not_present)
+		return vm_do_claim_page (page);
 }
 
 /* Free the page.
@@ -197,18 +213,21 @@ vm_do_claim_page (struct page *page) {
 	page->frame = frame;
 
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
-	struct thread *curr = thread_current();
-	bool writable = page->writable; // 쓰기 가능 여부
-	pml4_set_page(curr->pml4,page->va,frame->kva,writable); // 페이지 주소와 프레임 주소 매핑
 
-	return swap_in (page, frame->kva); // 스왑 인
+	if(install_page(page->va,frame->kva,page->writable))  // 페이지 주소와 프레임 주소 매핑
+	{	
+		return swap_in (page, frame->kva); // 스왑 인
+	}
+	return false; // 스왑 인
 }
 
 
 /* Initialize new supplemental page table */
 void
 supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
-	hash_init(&spt->page_table,page_hash,page_less,NULL); // 페이지 테이블을 해시 구조체로 초기화
+	struct hash *pt = malloc(sizeof(struct hash));
+	hash_init(pt,page_hash,page_less,NULL); // 페이지 테이블을 해시 구조체로 초기화
+	spt->page_table = pt;
 }
 
 /* Copy supplemental page table from src to dst */

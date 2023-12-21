@@ -25,7 +25,7 @@
         "istream": "c",
         "ostream": "c",
         "tuple": "c",
-        "utility": "c"
+        "utility": "c",
+        "uninit.h": "c"
     },
-    "C_Cpp.errorSquiggles": "disabled"
 }

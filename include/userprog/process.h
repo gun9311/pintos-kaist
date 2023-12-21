@@ -13,5 +13,7 @@ void process_activate (struct thread *next);
 /* syscall */
 void argument_stack(char **parse, int count, void **esp);
 struct thread *get_child_process(int pid);
+static bool install_page(void *upage, void *kpage, bool writable);
+
 
 #endif /* userprog/process.h */
