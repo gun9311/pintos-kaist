@@ -13,15 +13,17 @@ struct file {
 /* Opens a file for the given INODE, of which it takes ownership,
  * and returns the new file.  Returns a null pointer if an
  * allocation fails or if INODE is null. */
-struct file *
-file_open (struct inode *inode) {
+struct file *file_open (struct inode *inode) 
+{
 	struct file *file = calloc (1, sizeof *file);
 	if (inode != NULL && file != NULL) {
 		file->inode = inode;
 		file->pos = 0;
 		file->deny_write = false;
 		return file;
-	} else {
+	} 
+	else 
+	{
 		inode_close (inode);
 		free (file);
 		return NULL;
@@ -30,8 +32,8 @@ file_open (struct inode *inode) {
 
 /* Opens and returns a new file for the same inode as FILE.
  * Returns a null pointer if unsuccessful. */
-struct file *
-file_reopen (struct file *file) {
+struct file *file_reopen (struct file *file) 
+{
 	return file_open (inode_reopen (file->inode));
 }
 
@@ -81,8 +83,8 @@ file_read (struct file *file, void *buffer, off_t size) {
  * Returns the number of bytes actually read,
  * which may be less than SIZE if end of file is reached.
  * The file's current position is unaffected. */
-off_t
-file_read_at (struct file *file, void *buffer, off_t size, off_t file_ofs) {
+off_t file_read_at (struct file *file, void *buffer, off_t size, off_t file_ofs) 
+{
 	return inode_read_at (file->inode, buffer, size, file_ofs);
 }
 

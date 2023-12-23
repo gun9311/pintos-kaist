@@ -4,21 +4,20 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+
+#include "filesys/file.h"
 #include "threads/interrupt.h"
+#include "threads/synch.h"
 #ifdef VM
 #include "vm/vm.h"
 #endif
 
-// * USERPROG 추가
-#include "include/threads/synch.h"
-
 /* States in a thread's life cycle. */
-enum thread_status
-{
-	THREAD_RUNNING, /* Running thread. */
-	THREAD_READY,	/* Not running but ready to run. */
-	THREAD_BLOCKED, /* Waiting for an event to trigger. */
-	THREAD_DYING	/* About to be destroyed. */
+enum thread_status {
+    THREAD_RUNNING, /* Running thread. */
+    THREAD_READY,   /* Not running but ready to run. */
+    THREAD_BLOCKED, /* Waiting for an event to trigger. */
+    THREAD_DYING    /* About to be destroyed. */
 };
 
 /* Thread identifier type.
@@ -27,9 +26,9 @@ typedef int tid_t;
 #define TID_ERROR ((tid_t)-1) /* Error value for tid_t. */
 
 /* Thread priorities. */
-#define PRI_MIN 0	   /* Lowest priority. */
+#define PRI_MIN 0      /* Lowest priority. */
 #define PRI_DEFAULT 31 /* Default priority. */
-#define PRI_MAX 63	   /* Highest priority. */
+#define PRI_MAX 63     /* Highest priority. */
 
 /* A kernel thread or user process.
  *
@@ -88,56 +87,74 @@ typedef int tid_t;
  * only because they are mutually exclusive: only a thread in the
  * ready state is on the run queue, whereas only a thread in the
  * blocked state is on a semaphore wait list. */
-struct thread
-{
-	/* Owned by thread.c. */
-	tid_t tid;				   /* Thread identifier. */
-	enum thread_status status; /* Thread state. */
-	char name[16];			   /* Name (for debugging purposes). */
-	int priority;			   /* Priority. */
-	int64_t time_to_wakeup;	   /* Time to wake up (for sleeping thread) */
+struct thread {
+    /* Owned by thread.c. */
+    tid_t tid;                 /* Thread identifier. */
+    enum thread_status status; /* Thread state. */
+    char name[16];             /* Name (for debugging purposes). */
+    int priority;              /* Priority. */
 
-	/* Shared between thread.c and synch.c. */
-	struct list_elem elem; /* List element. */
+    /* Shared between thread.c and synch.c. */
+    struct list_elem elem; /* List element. */
+    struct list_elem all_elem;
+    struct list_elem donation_elem;
 
-	/* priority scheduling */
-	int init_priority;				
-	struct lock *wait_on_lock;		
-	struct list donations;			
-	struct list_elem donation_elem; 
+    int init_priority;
+    struct lock *wait_on_lock;
+    struct list donations;
 
-	/* mlfqs */
-	int nice; 
-	int recent_cpu;
-	struct list_elem allelem;
-
-	struct thread* parent_t; 
-	struct list children_list; 
-	struct list_elem child_elem; 
-
-	struct semaphore sema_exit;
-	struct semaphore sema_wait;
-	struct semaphore sema_fork; 
-	int exit_status;
-
-	/* file descriptor */
-	struct file **fdt;
-	int next_fd;
-	struct file *running_file;
-	
 #ifdef USERPROG
-	/* Owned by userprog/process.c. */
-	uint64_t *pml4; /* Page map level 4 */
-#endif
-#ifdef VM
-	/* Table for whole virtual memory owned by thread. */
-	struct supplemental_page_table spt;
+    /* Owned by userprog/process.c. */
+    uint64_t *pml4; /* Page map level 4 */
 #endif
 
-	/* Owned by thread.c. */
-	struct intr_frame tf; /* Information for switching */
-	struct intr_frame ptf;
-	unsigned magic;		  /* Detects stack overflow. */
+    // USERPROG
+    struct thread *parent;
+    struct list_elem child_elem;
+    struct list childs;
+
+    bool process_load;
+    struct semaphore load_sema;
+
+    bool process_exit;
+    int exit_status;
+
+    struct file **fd_table;
+    struct file **files;
+    int next_fd;
+    int next_file;
+
+    struct list exit_infos;
+
+    bool is_user_thread;
+
+    bool child_do_fork_success;
+
+    struct file *file_executing;
+
+// END USERPROG
+#ifdef VM
+    /* Table for whole virtual memory owned by thread. */
+    struct supplemental_page_table spt;
+#endif
+    // VM
+    uintptr_t user_rsp;
+    struct list mmap_list;
+    // END VM
+
+    /* mlfqs */
+    int nice;
+    int recent_cpu;
+
+    /* Owned by thread.c. */
+    struct intr_frame tf; /* Information for switching */
+    unsigned magic;       /* Detects stack overflow. */
+};
+
+struct sleeping_thread {
+    struct thread *t;
+    int64_t wake_tick;
+    struct list_elem elem;
 };
 
 /* If false (default), use round-robin scheduler.
@@ -145,13 +162,26 @@ struct thread
    Controlled by kernel command-line option "-o mlfqs". */
 extern bool thread_mlfqs;
 
+bool priority_less(const struct list_elem *, const struct list_elem *, void *);
+bool d_priority_less(const struct list_elem *, const struct list_elem *, void *);
+
 void thread_init(void);
 void thread_start(void);
 
 void thread_tick(void);
+void thread_wake(void);
 void thread_print_stats(void);
 
+void build_donations(void);
+void percolate_up(void);
+void sort_donation_list(void);
+void donate_priority(void);
+
+void remove_with_lock(struct lock *lock);
+void refresh_priority(void);
+
 typedef void thread_func(void *aux);
+void execute_max_priority(void);
 tid_t thread_create(const char *name, int priority, thread_func *, void *);
 
 void thread_block(void);
@@ -163,6 +193,7 @@ const char *thread_name(void);
 
 void thread_exit(void) NO_RETURN;
 void thread_yield(void);
+void thread_sleep(int64_t tick);
 
 int thread_get_priority(void);
 void thread_set_priority(int);
@@ -172,23 +203,13 @@ void thread_set_nice(int);
 int thread_get_recent_cpu(void);
 int thread_get_load_avg(void);
 
-void do_iret(struct intr_frame *tf);
-
-void thread_preemption(void);
-
-/* priority scheduling */
-bool compare_thread_priority(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
-bool compare_donation_priority(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
-void donate_priority(void);
-void remove_with_lock(struct lock *lock);
-void refresh_priority(void);
-
-/* mlfqs */
 void mlfqs_priority(struct thread *t);
 void mlfqs_recent_cpu(struct thread *t);
 void mlfqs_load_avg(void);
 void mlfqs_increment(void);
-void mlfqs_recalc_priority(void);
 void mlfqs_recalc_recent_cpu(void);
+void mlfqs_recalc_priority(void);
+
+void do_iret(struct intr_frame *tf);
 
 #endif /* threads/thread.h */

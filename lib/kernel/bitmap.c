@@ -24,7 +24,8 @@ typedef unsigned long elem_type;
 /* From the outside, a bitmap is an array of bits.  From the
    inside, it's an array of elem_type (defined above) that
    simulates an array of bits. */
-struct bitmap {
+struct bitmap 
+{
 	size_t bit_cnt;     /* Number of bits. */
 	elem_type *bits;    /* Elements that represent bits. */
 };
@@ -69,8 +70,8 @@ last_mask (const struct bitmap *b) {
    and sets all of its bits to false.
    Returns true if success, false if memory allocation
    failed. */
-struct bitmap *
-bitmap_create (size_t bit_cnt) {
+struct bitmap *bitmap_create (size_t bit_cnt) 
+{
 	struct bitmap *b = malloc (sizeof *b);
 	if (b != NULL) {
 		b->bit_cnt = bit_cnt;

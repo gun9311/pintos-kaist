@@ -49,7 +49,8 @@
 #define CMD_WRITE_SECTOR_RETRY 0x30     /* WRITE SECTOR with retries. */
 
 /* An ATA device. */
-struct disk {
+struct disk 
+{
 	char name[8];               /* Name, e.g. "hd0:1". */
 	struct channel *channel;    /* Channel disk is on. */
 	int dev_no;                 /* Device 0 or 1 for master or slave. */
@@ -63,7 +64,8 @@ struct disk {
 
 /* An ATA channel (aka controller).
    Each channel can control up to two disks. */
-struct channel {
+struct channel 
+{
 	char name[8];               /* Name, e.g. "hd0". */
 	uint16_t reg_base;          /* Base I/O port. */
 	uint8_t irq;                /* Interrupt in use. */
@@ -182,8 +184,8 @@ disk_print_stats (void) {
 1:0 - scratch
 1:1 - swap
 */
-struct disk *
-disk_get (int chan_no, int dev_no) {
+struct disk * disk_get (int chan_no, int dev_no) 
+{
 	ASSERT (dev_no == 0 || dev_no == 1);
 
 	if (chan_no < (int) CHANNEL_CNT) {

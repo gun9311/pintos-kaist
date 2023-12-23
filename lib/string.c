@@ -215,8 +215,8 @@ outputs:
 'to'
 'tokenize.'
 */
-char *
-strtok_r (char *s, const char *delimiters, char **save_ptr) {
+char *strtok_r (char *s, const char *delimiters, char **save_ptr) 
+{
 	char *token;
 
 	ASSERT (delimiters != NULL);
@@ -254,8 +254,8 @@ strtok_r (char *s, const char *delimiters, char **save_ptr) {
 }
 
 /* Sets the SIZE bytes in DST to VALUE. */
-void *
-memset (void *dst_, int value, size_t size) {
+void *memset (void *dst_, int value, size_t size) 
+{
 	unsigned char *dst = dst_;
 
 	ASSERT (dst != NULL || size == 0);
